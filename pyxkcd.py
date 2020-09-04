@@ -1,13 +1,15 @@
 #!/usr/bin/python3
 
-import requests, os, bs4
+import requests, os, bs4, threading
 
 url = 'https://xkcd.com/'
-try:
-    os.makedirs('xkcd', exist_ok=True)
-    while not url.endswith('#'):
-        print('[+] Downloadong page ' + url + '...')
-        res = requests.get(url)
+os.makedirs('xkcd', exist_ok=True)
+
+def downloadXkcd(startComic, endComic):
+    for urlNumber in range(startComic, endComic):
+        imageUrl = url + str(urlNumber)
+        print('[+] Downloadong page ' + imageUrl + '...')
+        res = requests.get(imageUrl)
         res.raise_for_status()
         soup= bs4.BeautifulSoup(res.text, 'html.parser')
         comicElem = soup.select('#comic img')
@@ -22,8 +24,17 @@ try:
             for chunk in res.iter_content(100000):
                 imageFile.write(chunk)
             imageFile.close()
-        prevLink = soup.select('a[rel="prev"]')[0]
-        url = 'https://xkcd.com' + prevLink.get('href')
-    print('[+] Done.')
-except KeyboardInterrupt:
-    print('\n[!] Exiting...')
+
+downloadThreads = []
+for i in range(0, 140, 10):
+    start = i
+    end = i + 10
+    if start == 0:
+        start = 1
+    downloadThread = threading.Thread(target=downloadXkcd, args=(start, end))
+    downloadThreads.append(downloadThread)
+    downloadThread.start()
+
+for downloadThread in downloadThreads:
+    downloadThread.join()
+print('[+] Done.')
